@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>skeleton</title>
+		<style>
+			body { margin: 0; height: 100vh; display: grid; place-content: center; justify-items: center; gap: 2rem; background: #222; }
+			h1 { margin: 0; color: white; font: 6rem Papyrus, fantasy; text-align: center; }
+			label { color: white; font: 1.5rem Papyrus, fantasy; display: flex; align-items: center; gap: 1rem; }
+			input { width: 16rem; }
+			button { font-size: 2rem; padding: 1rem 2rem; cursor: pointer; }
+		</style>
+		<script type="module" src="skeleton.js" data-chance="0"></script>
+	</head>
+	<body>
+		<h1>skeleton</h1>
+		<button onclick="runSkeleton()">skeleton</button>
+		<label>
+			chance per second
+			<input type="range" min="0" max="100" value="0" autocomplete="off" />
+			<span>0%</span>
+		</label>
+		<script>
+			const skel = document.querySelector('script[src$="skeleton.js"]');
+			const slider = document.querySelector('input');
+			slider.oninput = () => {
+				skel.dataset.chance = slider.value / 100;
+				slider.nextElementSibling.textContent = slider.value + '%';
+			};
+		</script>
+	</body>
+</html>
