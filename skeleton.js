@@ -1,18 +1,13 @@
-// Optional: data-chance="0.002" (per second, default 1/1000), data-z="-10" (z-index, default -10)
-
-const script = document.querySelector('script[src$="skeleton.js"]');
-const chance = () => Number(script?.dataset.chance ?? 1 / 1000);
-const z = script?.dataset.z ?? -10;
+const script = [...document.scripts].find((s) => s.src === import.meta.url);
+const opt = (name, def) => Number(script?.dataset[name] ?? def);
 const frames = Array.from({ length: 33 }, (_, i) => new URL(`frames/frame_${i}.webp`, import.meta.url).href);
 
-const FPS = 40;
 const G = 1.2128;
 const DX = -737.6;
 const DY = -25.5;
-const START_VH = 15;
 
 function planRun(W, V) {
-	const want = (START_VH / 100) * (V / 420);
+	const want = (opt('size', 15) / 100) * (V / 420);
 	let n = 0;
 	let s;
 	while (true) {
@@ -41,7 +36,7 @@ function planRun(W, V) {
 const img = document.createElement('img');
 img.alt = '';
 img.style.cssText =
-	`position:fixed;top:0;left:0;z-index:${z};width:1280px;max-width:none;transform-origin:top left;pointer-events:none`;
+	`position:fixed;top:0;left:0;width:1280px;max-width:none;transform-origin:top left;pointer-events:none`;
 
 let timer;
 let running = false;
@@ -57,6 +52,7 @@ function runSkeleton() {
 		img.style.transform = `translate(${s.x}px, ${s.y}px) scale(${s.scale})`;
 	};
 	show();
+	img.style.zIndex = opt('z', -10);
 	document.body.append(img);
 	timer = setInterval(() => {
 		if (++tick >= steps.length) {
@@ -64,11 +60,11 @@ function runSkeleton() {
 			img.remove();
 			running = false;
 		} else show();
-	}, 1000 / FPS);
+	}, 1000 / opt('fps', 40));
 }
 
 for (const src of frames) new Image().src = src;
 window.runSkeleton = runSkeleton;
 setInterval(() => {
-	if (!running && Math.random() < chance()) runSkeleton();
+	if (!running && Math.random() < opt('chance', 1 / 1000)) runSkeleton();
 }, 1000);
