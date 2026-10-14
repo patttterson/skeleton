@@ -4,7 +4,7 @@ this is so stupid.
 
 ## Usage
 ```html
-<script type="module" src="https://skeleton.minji.love/skeleton.js" data-fps="60" data-size="25" data-z="9999"></script>
+<script type="module" src="https://skeleton.minji.love/skeleton.min.js" data-fps="40" data-size="25" data-z="9999"></script>
 ```
 
 ## Build
