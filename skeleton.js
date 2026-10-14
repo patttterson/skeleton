@@ -33,32 +33,23 @@ function planRun(W, V) {
 	});
 }
 
-const img = document.createElement('img');
-img.alt = '';
-img.style.cssText =
-	`position:fixed;top:0;left:0;width:1280px;max-width:none;transform-origin:top left;pointer-events:none`;
-
-let timer;
-let running = false;
-
 function runSkeleton() {
-	clearInterval(timer);
 	const steps = planRun(innerWidth, innerHeight);
+	const img = document.createElement('img');
+	img.alt = '';
+	img.style.cssText = `position:fixed;top:0;left:0;z-index:${opt('z', -10)};width:1280px;max-width:none;transform-origin:top left;pointer-events:none`;
 	let tick = 0;
-	running = true;
 	const show = () => {
 		const s = steps[tick];
 		img.src = s.src;
 		img.style.transform = `translate(${s.x}px, ${s.y}px) scale(${s.scale})`;
 	};
 	show();
-	img.style.zIndex = opt('z', -10);
 	document.body.append(img);
-	timer = setInterval(() => {
+	const timer = setInterval(() => {
 		if (++tick >= steps.length) {
 			clearInterval(timer);
 			img.remove();
-			running = false;
 		} else show();
 	}, 1000 / opt('fps', 40));
 }
@@ -66,5 +57,5 @@ function runSkeleton() {
 for (const src of frames) new Image().src = src;
 window.runSkeleton = runSkeleton;
 setInterval(() => {
-	if (!running && Math.random() < opt('chance', 1 / 1000)) runSkeleton();
+	if (Math.random() < opt('chance', 1 / 1000)) runSkeleton();
 }, 1000);
