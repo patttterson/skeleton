@@ -1,0 +1,8 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>skeleton (obs)</title>
+<script type="module" src="../skeleton.min.js" data-z="0"></script>
+<script>
+  const skel = document.querySelector('script[src$="skeleton.min.js"]');
+  for (const [key, value] of new URLSearchParams(location.search)) skel.dataset[key] = value;
+</script>
