@@ -1,0 +1,118 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>skeleton (channel points)</title>
+<script type="module" src="../skeleton.min.js" data-z="0" data-chance="0"></script>
+<script type="module">
+    const params = new URLSearchParams(location.search);
+    const skel = document.querySelector('script[src$="skeleton.min.js"]');
+    for (const [key, value] of params) skel.dataset[key] = value;
+
+    const log = (...a) => console.log('skeleton:', ...a);
+    const run = () => window.runSkeleton?.();
+
+    window.addEventListener('skeleton', run);
+
+    if (params.has('once')) run();
+
+    const key = params.get('key');
+    const staticToken = params.get('token');
+    const reward = params.get('reward')?.toLowerCase();
+
+    async function getAuth(force = false) {
+        if (key) {
+            const res = await fetch(`/twitch/token?key=${encodeURIComponent(key)}${force ? '&force=1' : ''}`);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error ?? `token endpoint returned ${res.status}`);
+            return data;
+        }
+        const v = await fetch('https://id.twitch.tv/oauth2/validate', {
+            headers: { Authorization: `OAuth ${staticToken}` },
+        }).then((r) => r.json());
+        if (!v.user_id) throw new Error('token is invalid or expired');
+        return { access_token: staticToken, client_id: v.client_id, user_id: v.user_id };
+    }
+
+    async function subscribe(sessionId) {
+        for (const force of [false, true]) {
+            const auth = await getAuth(force);
+            const res = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+                method: 'POST',
+                headers: {
+                    'Client-Id': auth.client_id,
+                    Authorization: `Bearer ${auth.access_token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: 'channel.channel_points_custom_reward_redemption.add',
+                    version: '1',
+                    condition: { broadcaster_user_id: auth.user_id },
+                    transport: { method: 'websocket', session_id: sessionId },
+                }),
+            });
+            if (res.ok) return log('listening for channel point redemptions');
+            if (res.status !== 401 || !key) throw new Error(`subscribe failed: ${await res.text()}`);
+        }
+        throw new Error('subscribe failed after refreshing the token');
+    }
+
+    let ws;
+    let lastSeen = 0;
+    let keepalive = 30;
+
+    function connect(url = 'wss://eventsub.wss.twitch.tv/ws', isReconnect = false) {
+        const sock = new WebSocket(url);
+        if (!isReconnect) {
+            ws = sock;
+            lastSeen = Date.now();
+        }
+        sock.onmessage = async (e) => {
+            const msg = JSON.parse(e.data);
+            const type = msg.metadata.message_type;
+
+            if (type === 'session_welcome') {
+                keepalive = msg.payload.session.keepalive_timeout_seconds ?? keepalive;
+                if (isReconnect) {
+                    const old = ws;
+                    ws = sock;
+                    lastSeen = Date.now();
+                    return old?.close();
+                }
+            }
+            if (sock !== ws) return;
+            lastSeen = Date.now();
+
+            if (type === 'session_welcome') {
+                try {
+                    await subscribe(msg.payload.session.id);
+                } catch (err) {
+                    console.error('skeleton:', err.message);
+                    sock.close();
+                }
+            } else if (type === 'session_reconnect') {
+                connect(msg.payload.session.reconnect_url, true);
+            } else if (type === 'notification') {
+                const r = msg.payload.event.reward;
+                log(`redeemed: ${r.title}`);
+                if (!reward || r.title.toLowerCase() === reward || r.id === reward) run();
+            }
+        };
+        sock.onclose = () => {
+            if (sock !== ws) return;
+            ws = null;
+            log('disconnected, reconnecting in 5s');
+            setTimeout(() => connect(), 5000);
+        };
+    }
+
+    setInterval(() => {
+        if (ws && Date.now() - lastSeen > (keepalive + 10) * 1000) {
+            log('no keepalive, reconnecting');
+            const dead = ws;
+            ws = null;  
+            dead.close();
+            connect();
+        }
+    }, 5000);
+
+    if (key || staticToken) connect();
+</script>
